@@ -1,507 +1,374 @@
-# 🚀 Onboarding Flow Redesign - Complete Implementation
+# 🧾 VENK — Inventory & GST Management System
 
-## ✅ What Was Built
-
-A **smart, modern onboarding wizard** with 3 steps, GSTIN auto-fill, auto-save, and beautiful UI.
+A **full-stack, multi-tenant Inventory Management System** with built-in **GST compliance**, designed for Indian businesses. Manage products, purchases, sales, customers, suppliers, and generate GST-ready export reports — all from a single dashboard.
 
 ---
 
-## 🎯 Key Features Implemented
+## ✨ Features
 
-### 1. **Step-Based Wizard**
-- ✅ Step 1: Business Profile
-- ✅ Step 2: Tax Settings  
-- ✅ Step 3: Invoice Setup
-- ✅ Visual progress indicator (1/3, 2/3, 3/3)
-- ✅ Step navigation with Back/Continue buttons
+### 🔐 Authentication & Multi-Tenancy
+- JWT-based authentication (Register / Login)
+- Multi-tenant data isolation — each user sees only their own data
+- Role-based access (Admin / Staff)
+- Smart onboarding wizard with GSTIN auto-fill
 
-### 2. **Smart GSTIN Auto-Fill**
-- ✅ Enter 15-digit GSTIN
-- ✅ Auto-detects state from first 2 digits
-- ✅ Auto-fills: Business Name, Address, City, State
-- ✅ Loading spinner during fetch
-- ✅ Error handling if API fails
-- ✅ Fields remain editable after auto-fill
+### 📦 Inventory Management
+- Add, edit, and delete products with HSN codes
+- Track stock quantities in real-time
+- Quick stock adjustments (add/set modes)
+- Product search with autocomplete
+- Low-stock alerts on the dashboard
 
-### 3. **Form Validation**
-- ✅ **GSTIN**: 15-character format `29ABCDE1234F1Z5`
-- ✅ **PAN**: 10-character format `ABCDE1234F`
-- ✅ **Phone**: Exactly 10 digits
-- ✅ **PIN Code**: 6 digits
-- ✅ Inline error messages
-- ✅ Real-time validation feedback
+### 🛒 Purchase Module
+- Create purchases with multi-item line entries
+- Supplier auto-search and create-on-the-fly
+- Auto GST calculation (CGST/SGST/IGST) based on product rates
+- Purchase returns with stock reversal
+- Multiple payment methods (Cash, UPI, Card, Bank Transfer, Credit)
 
-### 4. **Auto-Save**
-- ✅ Saves to localStorage every 1 second
-- ✅ Prevents data loss on page refresh
-- ✅ Restores data automatically
-- ✅ Visual "Auto-saving..." indicator
-- ✅ Clears after successful submission
+### 💰 Sales / Billing Module
+- Create sales invoices with auto-generated invoice numbers
+- Customer lookup by phone number
+- GST breakup per item (CGST + SGST or IGST)
+- Sale returns with stock and GST reversal
+- Invoice printing with customizable templates
 
-### 5. **Logo Upload**
-- ✅ Drag & drop UI
-- ✅ File validation (PNG, JPG, SVG)
-- ✅ Size limit: 2MB
-- ✅ Image preview
-- ✅ Remove/replace option
+### 👥 Customer & Supplier Management
+- Full directory with aggregated stats
+- Transaction ledger per customer/supplier
+- Balance tracking (total purchases/sales minus returns)
+- Search and filter capabilities
 
-### 6. **Modern UI/UX**
-- ✅ Minimal SaaS design (Zoho/Razorpay style)
-- ✅ Rounded inputs with soft shadows
-- ✅ Icons for each field
-- ✅ Tooltips with examples
-- ✅ Dark mode compatible
-- ✅ Responsive layout
-- ✅ Smooth transitions and animations
+### 📊 Dashboard & Analytics
+- Month-to-date (MTD) and Year-to-date (YTD) summaries
+- Sales vs Purchases graph (Recharts)
+- Top selling products
+- Low stock alerts
+- Revenue and profit metrics
 
----
+### 📤 GST Export Reports
+- **GSTR-1 (B2B)** — Business-to-business sales
+- **GSTR-1 (B2CS)** — Business-to-consumer sales
+- **CDNR** — Credit/Debit notes (Returns)
+- **HSN Summary** — HSN-wise sales summary
+- Export to **Excel (.xlsx)** and **CSV** formats
+- Custom date range filtering
 
-## 📁 Files Created/Modified
+### ⚙️ Settings Module
+- Business profile management
+- Tax settings (default GST rate, IGST toggle, round-off)
+- Invoice settings (prefix, numbering, terms & conditions)
+- Notification preferences
 
-### Frontend
-1. **`frontend/src/pages/Onboarding.jsx`** (790 lines)
-   - Complete wizard implementation
-   - 3-step form with validation
-   - GSTIN auto-fetch logic
-   - Auto-save functionality
-   - Logo upload with preview
-
-### Backend
-2. **`backend/controllers/onboardingController.js`** (255 lines)
-   - Complete onboarding endpoint
-   - Business profile creation/update
-   - Tax settings save
-   - Invoice settings save
-   - GSTIN/PAN validation
-
-3. **`backend/routes/onboarding.js`** (11 lines)
-   - Route definition
-   - Authentication middleware
-
-4. **`backend/middleware/auth.js`** (41 lines)
-   - JWT authentication
-   - Token validation
-   - Error handling
-
-5. **`backend/server.js`** (Modified)
-   - Added onboarding routes import
-   - Registered `/api/onboarding` endpoint
+### 🤖 GST Filing Assistant
+- Built-in AI assistant for GST filing guidance
+- ITC claim advice and reconciliation help
+- Tax regulation references (CGST Act, 2017)
 
 ---
 
-## 🔧 API Endpoint
+## 🏗️ Tech Stack
 
-### POST `/api/onboarding/complete`
-
-**Headers:**
-```json
-{
-  "Authorization": "Bearer <token>",
-  "Content-Type": "application/json"
-}
-```
-
-**Request Body:**
-```json
-{
-  // Business Profile
-  "businessName": "ABC Enterprises",
-  "tradeName": "ABC Tech",
-  "gstin": "27AABCU9603R1ZX",
-  "pan": "AABCU9603R",
-  "phone": "9876543210",
-  "email": "info@abc.com",
-  "address": "123, MG Road",
-  "city": "Mumbai",
-  "state": "Maharashtra",
-  "stateCode": "27",
-  "pincode": "400001",
-  "logoUrl": "data:image/png;base64,...",
-  
-  // Tax Settings
-  "defaultGstRate": 18,
-  "enableIgst": true,
-  "enableRoundOff": true,
-  "filingFrequency": "monthly",
-  
-  // Invoice Settings
-  "invoicePrefix": "INV-",
-  "purchasePrefix": "PUR-",
-  "startingNumber": 1,
-  "showHsn": true,
-  "showGstBreakup": true,
-  "invoiceTerms": "Goods once sold cannot be returned."
-}
-```
-
-**Success Response:**
-```json
-{
-  "success": true,
-  "message": "Onboarding completed successfully",
-  "data": {
-    "businessId": "uuid"
-  }
-}
-```
-
-**Error Response:**
-```json
-{
-  "success": false,
-  "message": "Invalid GSTIN format"
-}
-```
+| Layer | Technology |
+|-------|------------|
+| **Frontend** | React 18, Vite, TailwindCSS |
+| **UI Components** | Lucide React (icons), Framer Motion (animations), Recharts (charts) |
+| **Routing** | React Router DOM v6 |
+| **Backend** | Node.js, Express.js (ES Modules) |
+| **Database** | Oracle Database (XE/19c+) via `oracledb` |
+| **Auth** | JWT (jsonwebtoken) + bcrypt |
+| **Exports** | ExcelJS (.xlsx), json2csv (.csv) |
 
 ---
 
-## 🎨 UI Components
+## 📂 Project Structure
 
-### Progress Indicator
 ```
-[✓] Business Profile ─── [●] Tax Settings ─── [3] Invoice Setup
-```
-
-### Form Fields (Step 1)
-- ✅ Business Name (Required) - with Building icon
-- ✅ Trade Name (Optional)
-- ✅ GSTIN (Recommended) - with auto-fetch & validation
-- ✅ PAN Number (Optional) - with format validation
-- ✅ Phone Number (Required) - with Phone icon
-- ✅ Email (Optional) - with Mail icon
-- ✅ Address (Optional) - with MapPin icon
-- ✅ City, State (Auto-filled from GSTIN)
-- ✅ PIN Code (6 digits)
-- ✅ Logo Upload - with preview
-
-### Form Fields (Step 2)
-- ✅ Default GST Rate (Dropdown: 0%, 5%, 12%, 18%, 28%)
-- ✅ Filing Frequency (Monthly/Quarterly)
-- ✅ Enable IGST (Toggle)
-- ✅ Enable Round Off (Toggle)
-
-### Form Fields (Step 3)
-- ✅ Invoice Prefix (e.g., INV-)
-- ✅ Purchase Prefix (e.g., PUR-)
-- ✅ Starting Number (e.g., 1)
-- ✅ Show HSN Code (Toggle)
-- ✅ Show GST Breakup (Toggle)
-- ✅ Terms & Conditions (Textarea)
-
----
-
-## 🔐 Validation Rules
-
-| Field | Format | Required | Validation |
-|-------|--------|----------|------------|
-| Business Name | Text | ✅ Yes | Min 2 chars |
-| GSTIN | 15 chars | Optional | Regex: `^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$` |
-| PAN | 10 chars | Optional | Regex: `^[A-Z]{5}[0-9]{4}[A-Z]{1}$` |
-| Phone | 10 digits | ✅ Yes | Numeric only |
-| PIN Code | 6 digits | Optional | Numeric only |
-| Email | Email format | Optional | Standard email validation |
-
----
-
-## 🚀 How It Works
-
-### User Flow
-1. **User visits `/onboarding`**
-2. **Sees Step 1: Business Profile**
-   - Progress bar shows "Step 1 of 3"
-   - Fills business name, phone
-   - Enters GSTIN (optional)
-   - If GSTIN entered → auto-fetches details
-   - Uploads logo (optional)
-   - Clicks "Save & Continue"
-
-3. **Sees Step 2: Tax Settings**
-   - Selects default GST rate
-   - Chooses filing frequency
-   - Toggles IGST and Round Off
-   - Clicks "Save & Continue"
-
-4. **Sees Step 3: Invoice Setup**
-   - Sets invoice/purchase prefixes
-   - Sets starting number
-   - Toggles HSN and GST breakup
-   - Adds terms & conditions
-   - Clicks "Complete Setup"
-
-5. **Success!**
-   - Shows success message
-   - Redirects to dashboard after 2 seconds
-   - Clears localStorage
-
-### Auto-Save Flow
-```
-User types → 1 second delay → Save to localStorage
-User refreshes → Load from localStorage → Restore form
-User completes → Clear localStorage
-```
-
-### GSTIN Auto-Fetch Flow
-```
-User enters GSTIN → 15 chars reached
-  ↓
-Validate format → Invalid? Show error
-  ↓
-Valid? → Show loading spinner
-  ↓
-Call GSTIN API (mock for now)
-  ↓
-Extract state code from first 2 digits
-  ↓
-Auto-fill: Name, Address, City, State
-  ↓
-User can edit auto-filled fields
+VENK/
+├── backend/
+│   ├── server.js                  # Main Express server (all API routes)
+│   ├── db.js                      # Oracle DB connection pool
+│   ├── package.json
+│   ├── .env.example               # Environment variable template
+│   ├── middleware/
+│   │   └── auth.js                # JWT authentication middleware
+│   ├── controllers/
+│   │   ├── gstExportController.js # GST export logic (B2B, B2CS, CDNR, HSN)
+│   │   └── onboardingController.js
+│   ├── routes/
+│   │   ├── gstExports.js          # GST export route definitions
+│   │   └── onboarding.js
+│   ├── utils/
+│   │   └── gstUtils.js            # GST calculation utilities
+│   ├── settings-module/           # Modular settings system
+│   │   ├── db.js
+│   │   ├── middleware/auth.js
+│   │   └── validators/settingsValidators.js
+│   └── schema.sql                 # Database schema definition
+│
+├── frontend/
+│   ├── index.html
+│   ├── vite.config.js
+│   ├── tailwind.config.js
+│   ├── package.json
+│   └── src/
+│       ├── main.jsx               # React entry point
+│       ├── App.jsx                # Root component + routing
+│       ├── index.css              # Global styles
+│       ├── context/
+│       │   ├── AuthContext.jsx     # Auth state management
+│       │   └── ThemeContext.jsx    # Theme provider (dark mode)
+│       ├── components/
+│       │   ├── Layout.jsx         # App shell (sidebar + content)
+│       │   ├── ProtectedRoute.jsx # Auth route guard
+│       │   ├── Autocomplete.jsx   # Searchable product dropdown
+│       │   ├── GstAssistant.jsx   # AI GST filing assistant
+│       │   ├── gst/
+│       │   │   └── DateRangePicker.jsx
+│       │   └── settings/
+│       │       ├── BusinessProfile.jsx
+│       │       ├── TaxSettings.jsx
+│       │       ├── InvoiceSettings.jsx
+│       │       ├── NotificationSettings.jsx
+│       │       └── ...            # Reusable form components
+│       ├── pages/
+│       │   ├── Dashboard.jsx      # Analytics dashboard
+│       │   ├── Inventory.jsx      # Product management
+│       │   ├── Purchase.jsx       # Purchase module
+│       │   ├── Sales.jsx          # Sales / billing
+│       │   ├── Customers.jsx      # Customer directory
+│       │   ├── Suppliers.jsx      # Supplier directory
+│       │   ├── Export.jsx         # GST export reports
+│       │   ├── Settings.jsx       # App settings
+│       │   ├── Login.jsx          # Login page
+│       │   ├── Register.jsx       # Registration page
+│       │   └── Onboarding.jsx     # Setup wizard
+│       ├── services/
+│       │   └── gstExportService.js
+│       └── utils/
+│           ├── gstHelpers.js      # GST calculation helpers
+│           └── printUtils.js      # Invoice print utilities
+│
+├── .gitignore
+└── README.md
 ```
 
 ---
 
-## 🎯 Smart Features
+## 🚀 Getting Started
 
-### 1. GSTIN State Detection
-```javascript
-const stateCode = gstin.substring(0, 2);
-// 27 → Maharashtra
-// 29 → Karnataka
-// 07 → Delhi
-// Auto-fills state field
+### Prerequisites
+
+- **Node.js** v18+ — [Download](https://nodejs.org/)
+- **Oracle Database** (XE or 19c+) — [Download](https://www.oracle.com/database/technologies/xe-downloads.html)
+- **Oracle Instant Client** — Required by `oracledb` npm package
+
+### 1. Clone the Repository
+
+```bash
+git clone https://github.com/YOUR_USERNAME/VENK.git
+cd VENK
 ```
 
-### 2. Auto-Format Input
-- GSTIN & PAN → Auto-uppercase
-- Phone → Numbers only, max 10 digits
-- PIN → Numbers only, max 6 digits
+### 2. Set Up the Database
 
-### 3. Error Handling
-- Invalid GSTIN → Show inline error
-- API fails → Allow manual entry
-- Duplicate GSTIN → Backend validation error
-- Network error → User-friendly message
+1. Connect to your Oracle database as a DBA
+2. Run the schema file to create all tables, sequences, and triggers:
 
-### 4. Progressive Disclosure
-- Required fields marked with *
-- Optional fields labeled
-- Tooltips explain purpose
-- Examples shown in placeholders
-
----
-
-## 📊 Database Mapping
-
-| Form Field | Table | Column |
-|------------|-------|--------|
-| businessName | business_profiles | business_name |
-| tradeName | business_profiles | trade_name |
-| gstin | business_profiles | gstin |
-| pan | business_profiles | pan |
-| phone | business_profiles | phone |
-| email | business_profiles | email |
-| address | business_profiles | address |
-| city | business_profiles | city |
-| state | business_profiles | state |
-| stateCode | business_profiles | state_code |
-| pincode | business_profiles | pincode |
-| logoUrl | business_profiles | logo_url |
-| defaultGstRate | tax_settings | default_gst_rate |
-| enableIgst | tax_settings | enable_igst |
-| enableRoundOff | tax_settings | enable_round_off |
-| filingFrequency | tax_settings | filing_frequency |
-| invoicePrefix | invoice_settings | invoice_prefix |
-| purchasePrefix | invoice_settings | purchase_prefix |
-| startingNumber | invoice_settings | starting_number |
-| showHsn | invoice_settings | show_hsn |
-| showGstBreakup | invoice_settings | show_gst_breakup |
-| invoiceTerms | invoice_settings | terms_and_conditions |
-
----
-
-## 🧪 Testing Checklist
-
-### Frontend Testing
-- [ ] Navigate to `http://localhost:5173/onboarding`
-- [ ] Verify 3-step wizard displays
-- [ ] Test progress indicator
-- [ ] Fill Step 1 with valid data
-- [ ] Test GSTIN auto-fetch (mock)
-- [ ] Test validation errors
-- [ ] Test logo upload
-- [ ] Test auto-save (refresh page)
-- [ ] Navigate between steps
-- [ ] Complete all 3 steps
-- [ ] Verify success message
-- [ ] Verify redirect to dashboard
-
-### Backend Testing
-- [ ] Test POST `/api/onboarding/complete`
-- [ ] Verify business creation
-- [ ] Verify business profile update
-- [ ] Verify tax settings save
-- [ ] Verify invoice settings save
-- [ ] Test GSTIN validation
-- [ ] Test PAN validation
-- [ ] Test phone validation
-- [ ] Test duplicate GSTIN handling
-- [ ] Test authentication (no token)
-- [ ] Test expired token
-
----
-
-## 🎨 Design Specifications
-
-### Colors
-- Background: `#0f172a` (Dark slate)
-- Card: `bg-white/5` (Glassmorphism)
-- Primary: `from-blue-600 to-indigo-600`
-- Success: `green-500`
-- Error: `red-500`
-- Text: `white`, `slate-400`, `slate-500`
-
-### Spacing
-- Card padding: `p-8`
-- Input padding: `py-3 px-4`
-- Button padding: `py-3 px-8`
-- Section gap: `space-y-6`
-
-### Typography
-- Heading: `text-2xl font-bold`
-- Label: `text-sm font-medium`
-- Input: `text-base`
-- Hint: `text-xs`
-
-### Effects
-- Card: `backdrop-blur-2xl`, `shadow-[0_20px_50px_rgba(0,0,0,0.3)]`
-- Input focus: `focus:ring-2 focus:ring-blue-500/40`
-- Button: `shadow-lg shadow-blue-900/30`
-- Transitions: `transition-all duration-300`
-
----
-
-## 🔮 Future Enhancements
-
-### GSTIN API Integration
-Replace mock with real GSTIN verification API:
-```javascript
-const response = await axios.get(
-  `https://api.gst.gov.in/v1/ taxpayer/search/${gstin}`
-);
+```sql
+-- Run in SQL*Plus or SQL Developer
+@backend/schema.sql
 ```
 
-### OCR for GST Certificate
-- Upload GST certificate image
-- Auto-extract GSTIN, business name, address
-- Using Tesseract.js or cloud OCR API
+This creates the following tables:
+- `users` — User accounts
+- `suppliers` — Supplier directory
+- `products` — Product catalog
+- `customers` — Customer directory
+- `purchases` / `purchase_items` — Purchase transactions
+- `purchase_returns` / `purchase_return_items` — Purchase returns
+- `sales` / `sale_items` — Sales transactions
+- `sale_returns` / `sale_return_items` — Sale returns
+- `business_profiles` — Business settings
+- `tax_settings` / `invoice_settings` — GST configuration
 
-### Multi-Step Validation
-- Validate all steps before final submit
-- Show summary before completion
-- Allow editing from summary
+### 3. Configure the Backend
 
-### Email Verification
-- Send verification email after onboarding
-- Verify email before activation
-
-### Business Category Selection
-- Add industry/category dropdown
-- Pre-fill settings based on category
-- Suggest GST rates
-
----
-
-## 📝 Usage Examples
-
-### Example 1: Quick Onboarding
-```
-User enters:
-- Business Name: "Tech Solutions"
-- Phone: "9876543210"
-- Clicks "Save & Continue"
-- Accepts defaults for tax/invoice
-- Completes in 30 seconds
+```bash
+cd backend
+npm install
 ```
 
-### Example 2: Full Onboarding
+Create a `.env` file (use `.env.example` as a template):
+
+```env
+# Oracle Database Configuration
+ORACLE_USER=your_oracle_username
+ORACLE_PASSWORD=your_oracle_password
+ORACLE_CONNECT=localhost:1521/XEPDB1
+
+# Server Configuration
+PORT=8080
+NODE_ENV=development
+JWT_SECRET=your_secure_random_jwt_secret_key
+
+# CORS Configuration
+CORS_ORIGIN=http://localhost:5173
 ```
-User enters:
-- Business Name: "ABC Enterprises Pvt Ltd"
-- GSTIN: "27AABCU9603R1ZX" → Auto-fills details
-- PAN: "AABCU9603R"
-- Phone: "9876543210"
-- Email: "info@abc.com"
-- Full address
-- Logo upload
-- Custom tax settings (18% GST, Monthly filing)
-- Custom invoice settings (INV-2024, show HSN)
-- Completes in 2 minutes
+
+Start the backend:
+
+```bash
+npm run dev     # Development (with nodemon)
+npm start       # Production
+```
+
+### 4. Configure the Frontend
+
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
+The app will be available at **http://localhost:5173**
+
+---
+
+## 🔌 API Endpoints
+
+### Authentication
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| POST | `/api/auth/register` | Register a new user |
+| POST | `/api/auth/login` | Login and get JWT token |
+
+### Products
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/products` | List all products |
+| GET | `/api/products/search?q=` | Search products (autocomplete) |
+| POST | `/api/products` | Create a new product |
+| PUT | `/api/products/:id` | Update a product |
+| DELETE | `/api/products/:id` | Soft-delete a product |
+| PATCH | `/api/products/:id/stock` | Adjust stock quantity |
+
+### Suppliers
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/suppliers` | List all suppliers |
+| GET | `/api/suppliers/search?q=` | Search suppliers |
+| POST | `/api/suppliers` | Create a new supplier |
+
+### Customers
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/customers` | List all customers |
+| GET | `/api/customers/phone/:phone` | Find customer by phone |
+| GET | `/api/customers/:id` | Customer details + ledger |
+
+### Purchases
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/purchases` | List all purchases |
+| POST | `/api/purchases` | Create a new purchase |
+| POST | `/api/purchase-returns` | Process a purchase return |
+
+### Sales
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/sales` | List all sales |
+| POST | `/api/sales` | Create a new sale |
+| POST | `/api/sales/return` | Process a sale return |
+
+### GST Exports
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/exports/b2b` | GSTR-1 B2B report |
+| GET | `/api/exports/b2cs` | GSTR-1 B2CS report |
+| GET | `/api/exports/cdnr` | Credit/Debit notes report |
+| GET | `/api/exports/hsn` | HSN summary report |
+
+### Settings & Dashboard
+| Method | Endpoint | Description |
+|--------|----------|-------------|
+| GET | `/api/settings` | Get user settings |
+| PUT | `/api/settings` | Update settings |
+| GET | `/api/dashboard/summary` | Dashboard metrics |
+| POST | `/api/onboarding/complete` | Complete onboarding wizard |
+
+> **Note:** All endpoints (except auth) require a valid JWT token in the `Authorization: Bearer <token>` header.
+
+---
+
+## 🔒 Environment Variables
+
+| Variable | Required | Description |
+|----------|----------|-------------|
+| `ORACLE_USER` | ✅ | Oracle database username |
+| `ORACLE_PASSWORD` | ✅ | Oracle database password |
+| `ORACLE_CONNECT` | ✅ | Oracle connection string (e.g., `localhost:1521/XEPDB1`) |
+| `PORT` | ❌ | Server port (default: `8080`) |
+| `NODE_ENV` | ❌ | Environment mode (default: `development`) |
+| `JWT_SECRET` | ✅ | Secret key for JWT signing |
+| `CORS_ORIGIN` | ❌ | Allowed CORS origin (default: `http://localhost:5173`) |
+
+---
+
+## 📸 Application Pages
+
+| Page | Route | Description |
+|------|-------|-------------|
+| Login | `/login` | User authentication |
+| Register | `/register` | New user registration |
+| Onboarding | `/onboarding` | 3-step setup wizard |
+| Dashboard | `/` | Analytics & KPI overview |
+| Inventory | `/inventory` | Product CRUD + stock management |
+| Purchase | `/purchase` | Purchase order creation & returns |
+| Sales | `/sales` | Sales invoice creation & returns |
+| Customers | `/customers` | Customer directory & ledger |
+| Suppliers | `/suppliers` | Supplier directory & ledger |
+| GST Export | `/export` | GSTR-1, CDNR, HSN reports |
+| Settings | `/settings` | Business, tax, invoice config |
+
+---
+
+## 🇮🇳 GST Compliance
+
+This system is built for **Indian GST regulations**:
+
+- ✅ Automatic CGST + SGST split (intra-state)
+- ✅ IGST for inter-state transactions
+- ✅ HSN code tracking per product
+- ✅ GSTIN validation (15-digit format)
+- ✅ State code detection from GSTIN
+- ✅ GSTR-1 ready exports (B2B, B2CS, CDNR, HSN)
+- ✅ Round-off as per GST rules
+- ✅ Credit/Debit note generation for returns
+
+---
+
+## 🛠️ Development
+
+```bash
+# Run backend with auto-reload
+cd backend && npm run dev
+
+# Run frontend dev server
+cd frontend && npm run dev
+
+# Build frontend for production
+cd frontend && npm run build
 ```
 
 ---
 
-## ⚡ Performance Optimizations
+## 📄 License
 
-1. **Debounced Auto-Save**
-   - Saves after 1 second of inactivity
-   - Prevents excessive localStorage writes
-
-2. **Lazy Loading**
-   - Each step renders only when active
-   - Reduces initial render time
-
-3. **Optimistic Updates**
-   - UI updates immediately
-   - Background save to localStorage
-
-4. **Efficient State Management**
-   - Single formData object
-   - No unnecessary re-renders
+This project is private and proprietary.
 
 ---
 
-## 🐛 Known Issues & Solutions
+## 👤 Author
 
-### Issue 1: GSTIN API Not Available
-**Solution**: Mock implementation provided. Replace with real API when available.
-
-### Issue 2: Large Logo Files
-**Solution**: 2MB limit enforced. Compress before upload if needed.
-
-### Issue 3: localStorage Size Limit
-**Solution**: Clear after submission. Base64 images stored temporarily.
-
----
-
-## 📚 Additional Resources
-
-- [GSTIN Format Documentation](https://www.gst.gov.in/)
-- [PAN Card Format](https://www.incometax.gov.in/)
-- [Indian State Codes](https://en.wikipedia.org/wiki/Indian_states_by_GSTIN_code)
-- [React Hook Form](https://react-hook-form.com/) (for future enhancement)
-- [Zod Validation](https://zod.dev/) (for future enhancement)
-
----
-
-## ✅ Final Result
-
-**A production-ready, smart onboarding flow that:**
-- ✅ Minimizes typing with auto-fill
-- ✅ Ensures GST compliance with validation
-- ✅ Prevents data loss with auto-save
-- ✅ Feels fast and modern with smooth UI
-- ✅ Handles edge cases gracefully
-- ✅ Ready for real GSTIN API integration
-
-**Time to Complete:**
-- Quick setup: ~30 seconds
-- Full setup: ~2 minutes
-
-**User Satisfaction:**
-- Reduced friction ✅
-- Clear guidance ✅
-- Professional feel ✅
-- Error prevention ✅
-
----
-
-**🎉 Onboarding is now ready for production use!**
+Built with ❤️ for Indian businesses.
