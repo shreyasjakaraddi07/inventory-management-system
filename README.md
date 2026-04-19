@@ -1,4 +1,4 @@
-# 🧾 VENK — Inventory & GST Management System
+# 🧾 Inventory & GST Management System
 
 A **full-stack, multi-tenant Inventory Management System** with built-in **GST compliance**, designed for Indian businesses. Manage products, purchases, sales, customers, suppliers, and generate GST-ready export reports — all from a single dashboard.
 
