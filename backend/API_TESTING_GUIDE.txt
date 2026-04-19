@@ -1,0 +1,380 @@
+/**
+ * API Testing Guide - Inventory Management System
+ * Connection: Oracle DB via Node.js Express backends
+ * Test with: Node.js, Postman, or curl
+ * 
+ * BASE URL: http://localhost:5000/api
+ */
+
+// ============================================================
+// 1. HEALTH CHECK
+// ============================================================
+
+GET http://localhost:5000/api/health
+
+// Response:
+// {
+//   "success": true,
+//   "message": "Server is running"
+// }
+
+// ============================================================
+// 2. FETCH SUPPLIERS
+// ============================================================
+
+GET http://localhost:5000/api/suppliers
+
+// Response:
+// {
+//   "success": true,
+//   "data": [
+//     {
+//       "SUPPLIER_ID": 1,
+//       "SUPPLIER_NAME": "ABC Enterprises",
+//       "GST_NUMBER": "18AABCT1234A1Z5",
+//       "PHONE_NUMBER": "9876543210",
+//       "EMAIL_ID": "contact@abc.com"
+//     }
+//   ]
+// }
+
+// ============================================================
+// 3. SEARCH SUPPLIERS
+// ============================================================
+
+GET http://localhost:5000/api/suppliers/search?q=ABC
+
+// Response: Array of matching suppliers
+
+// ============================================================
+// 4. FETCH PRODUCTS
+// ============================================================
+
+GET http://localhost:5000/api/products
+
+// Response:
+// {
+//   "success": true,
+//   "data": [
+//     {
+//       "PRODUCT_ID": 1,
+//       "PRODUCT_NAME": "Laptop",
+//       "HSN_CODE": "8471.30",
+//       "QUANTITY": 10,
+//       "PURCHASE_PRICE": 35000,
+//       "SALE_PRICE": 42000,
+//       "GST_RATE": 18
+//     }
+//   ]
+// }
+
+// ============================================================
+// 5. FETCH CUSTOMERS
+// ============================================================
+
+GET http://localhost:5000/api/customers
+
+// Response:
+// {
+//   "success": true,
+//   "data": [
+//     {
+//       "CUSTOMER_ID": 1,
+//       "CUSTOMER_NAME": "Retail Store A",
+//       "PHONE_NUMBER": "8765432109",
+//       "EMAIL_ID": "retail@a.com",
+//       "GST_NUMBER": null,
+//       "CITY": "Delhi"
+//     }
+//   ]
+// }
+
+// ============================================================
+// 6. CREATE A PURCHASE
+// ============================================================
+
+POST http://localhost:5000/api/purchases
+Content-Type: application/json
+
+{
+  "supplier_id": 1,
+  "invoice_number": "INV-2026-001",
+  "invoice_date": "2026-04-04",
+  "items": [
+    {
+      "product_id": 1,
+      "quantity": 5,
+      "unit_price": 35000,
+      "gst_rate": 18,
+      "is_igst": false
+    },
+    {
+      "product_id": 2,
+      "quantity": 20,
+      "unit_price": 300,
+      "gst_rate": 18,
+      "is_igst": false
+    }
+  ],
+  "is_igst": 0,
+  "notes": "Bulk purchase for restocking"
+}
+
+// Response:
+// {
+//   "success": true,
+//   "message": "Purchase created successfully",
+//   "purchase_id": 1,
+//   "summary": {
+//     "total_amount": 181800,
+//     "cgst_total": 16380,
+//     "sgst_total": 16380,
+//     "igst_total": 0
+//   }
+// }
+
+// ============================================================
+// 7. CREATE A SALE
+// ============================================================
+
+POST http://localhost:5000/api/sales
+Content-Type: application/json
+
+{
+  "customer_id": 1,
+  "invoice_number": "SAL-2026-001",
+  "invoice_date": "2026-04-04",
+  "items": [
+    {
+      "product_id": 1,
+      "quantity": 2,
+      "unit_price": 42000,
+      "gst_rate": 18,
+      "is_igst": false
+    },
+    {
+      "product_id": 3,
+      "quantity": 10,
+      "unit_price": 1200,
+      "gst_rate": 18,
+      "is_igst": false
+    }
+  ],
+  "is_igst": 0,
+  "notes": "Regular sale"
+}
+
+// Response:
+// {
+//   "success": true,
+//   "message": "Sale created successfully",
+//   "sale_id": 1,
+//   "summary": {
+//     "total_amount": 87840,
+//     "cgst_total": 3960,
+//     "sgst_total": 3960,
+//     "igst_total": 0
+//   }
+// }
+
+// ============================================================
+// 8. CREATE PURCHASE RETURN
+// ============================================================
+
+POST http://localhost:5000/api/purchase-return
+Content-Type: application/json
+
+{
+  "purchase_id": 1,
+  "items": [
+    {
+      "product_id": 2,
+      "quantity": 5
+    }
+  ],
+  "notes": "Defective items returned"
+}
+
+// Response:
+// {
+//   "success": true,
+//   "message": "Purchase return created successfully",
+//   "return_id": 1
+// }
+
+// ============================================================
+// 9. CREATE SALE RETURN
+// ============================================================
+
+POST http://localhost:5000/api/sale-return
+Content-Type: application/json
+
+{
+  "sale_id": 1,
+  "items": [
+    {
+      "product_id": 1,
+      "quantity": 1
+    }
+  ],
+  "notes": "Customer returned defective item"
+}
+
+// Response:
+// {
+//   "success": true,
+//   "message": "Sale return created successfully",
+//   "return_id": 1
+// }
+
+// ============================================================
+// 10. FETCH ALL PURCHASES
+// ============================================================
+
+GET http://localhost:5000/api/purchases
+
+// Response: Array of all purchase transactions
+
+// ============================================================
+// 11. FETCH ALL SALES
+// ============================================================
+
+GET http://localhost:5000/api/sales
+
+// Response: Array of all sale transactions
+
+// ============================================================
+// 12. FETCH STOCK REPORT
+// ============================================================
+
+GET http://localhost:5000/api/stock-report
+
+// Response:
+// {
+//   "success": true,
+//   "data": [
+//     {
+//       "PRODUCT_ID": 1,
+//       "PRODUCT_NAME": "Laptop",
+//       "HSN_CODE": "8471.30",
+//       "QUANTITY": 13,
+//       "PURCHASE_PRICE": 35000,
+//       "SALE_PRICE": 42000,
+//       "GST_RATE": 18,
+//       "SUPPLIER_NAME": "ABC Enterprises"
+//     }
+//   ]
+// }
+
+// ============================================================
+// 13. EXPORT DATA (CSV)
+// ============================================================
+
+GET http://localhost:5000/api/export
+
+// Response: CSV file download with all purchase data
+
+// ============================================================
+// CURL EXAMPLES
+// ============================================================
+
+// Health Check
+curl http://localhost:5000/api/health
+
+// Get Suppliers
+curl http://localhost:5000/api/suppliers
+
+// Create Purchase
+curl -X POST http://localhost:5000/api/purchases \
+  -H "Content-Type: application/json" \
+  -d '{
+    "supplier_id": 1,
+    "invoice_number": "INV-2026-002",
+    "invoice_date": "2026-04-04",
+    "items": [{"product_id": 1, "quantity": 3, "unit_price": 35000, "gst_rate": 18, "is_igst": false}],
+    "is_igst": 0,
+    "notes": "Test purchase"
+  }'
+
+// ============================================================
+// COMMON ERRORS & FIXES
+// ============================================================
+
+// 1. Connection refused
+// ❌ Error: ECONNREFUSED - Server not running
+// ✅ Fix: Start backend: cd backend && npm start
+
+// 2. Invalid supplier
+// ❌ Error: "Invalid supplier"
+// ✅ Fix: Use supplier_id from suppliers endpoint, not name
+
+// 3. Insufficient stock
+// ❌ Error: "Insufficient stock for product X"
+// ✅ Fix: Check current stock from stock-report, reduce quantity
+
+// 4. Missing fields
+// ❌ Error: "Missing required fields"
+// ✅ Fix: Ensure all required fields are present (supplier_id, invoice_number, items[], etc.)
+
+// 5. Quantity must be > 0
+// ❌ Error: "Quantity and price must be greater than 0"
+// ✅ Fix: Use positive numbers for quantity and unit_price
+
+// 6. Product not found
+// ❌ Error: "Product X not found"
+// ✅ Fix: Use product_id from products endpoint
+
+// ============================================================
+// SAMPLE NODE.JS TEST SCRIPT
+// ============================================================
+
+/*
+const axios = require('axios');
+
+const API = 'http://localhost:5000/api';
+
+async function testAPI() {
+  try {
+    // 1. Health check
+    console.log('✅ Health Check');
+    let res = await axios.get(`${API}/health`);
+    console.log(res.data);
+
+    // 2. Fetch suppliers
+    console.log('\n✅ Fetching Suppliers');
+    res = await axios.get(`${API}/suppliers`);
+    const supplier = res.data.data[0];
+    console.log('Suppliers:', res.data.data.length);
+
+    // 3. Fetch products
+    console.log('\n✅ Fetching Products');
+    res = await axios.get(`${API}/products`);
+    const product = res.data.data[0];
+    console.log('Products:', res.data.data.length);
+
+    // 4. Create purchase
+    console.log('\n✅ Creating Purchase');
+    res = await axios.post(`${API}/purchases`, {
+      supplier_id: supplier.SUPPLIER_ID,
+      invoice_number: `INV-${Date.now()}`,
+      invoice_date: new Date().toISOString().split('T')[0],
+      items: [{
+        product_id: product.PRODUCT_ID,
+        quantity: 2,
+        unit_price: 100,
+        gst_rate: 18,
+        is_igst: false
+      }],
+      is_igst: 0,
+      notes: 'Test'
+    });
+    console.log('Purchase created:', res.data.purchase_id);
+
+    console.log('\n✅ All tests passed!');
+  } catch (error) {
+    console.error('❌ Error:', error.response?.data?.error || error.message);
+  }
+}
+
+testAPI();
+*/

@@ -1,0 +1,109 @@
+# ========================================
+# Dependencies
+# ========================================
+node_modules/
+
+# ========================================
+# Environment Variables (SECRETS!)
+# ========================================
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ========================================
+# Build Output
+# ========================================
+frontend/dist/
+
+# ========================================
+# Debug / Diagnostic Output Files
+# ========================================
+backend/out.json
+backend/out.txt
+backend/out_exact.json
+backend/settings_diag_out.txt
+backend/settings_diag_utf8.txt
+
+# ========================================
+# Migration Logs (runtime-generated)
+# ========================================
+backend/migration_log.txt
+backend/migration_log_v2.txt
+backend/migration_log_v3.txt
+backend/migration_log_v4.txt
+
+# ========================================
+# Test / Scratch Scripts
+# ========================================
+backend/test_alter.js
+backend/test_dashboard.js
+backend/test_exact.js
+backend/test_fetch.js
+backend/test_get_settings.js
+backend/test_gstin_validation.js
+backend/test_new_supplier_flow.js
+backend/test_supplier_creation.js
+frontend/test_api.js
+frontend/test_purchase_flow.js
+
+# ========================================
+# One-time Migration / Patch Scripts
+# ========================================
+backend/patch.js
+backend/patch2.js
+backend/fix_existing_purchases.js
+backend/fix_purchase_returns_user_id.js
+backend/fix_settings_plsql.js
+backend/settings_fixes.js
+backend/update_existing_sales.js
+backend/check_constraint.js
+backend/check_return_cols.js
+backend/check_return_data.js
+backend/check_return_items_cols.js
+backend/check_settings_constraints.js
+backend/check_settings_data.js
+backend/migrate_settings_constraint.js
+backend/migrate_v2.js
+backend/add_purchase_payment_col.js
+backend/insert_default_settings.js
+backend/apply_migration.js
+backend/create_settings_table.js
+backend/create_tables_simple.js
+backend/create_triggers.js
+backend/add_gst_columns.js
+backend/add_user_id_to_gst_tables.js
+backend/run_gst_migration.js
+backend/run_onboarding_migration.js
+backend/purchase_return_migration.js
+
+# ========================================
+# IDE / Editor / Tool Config
+# ========================================
+.qoder/
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ========================================
+# OS Generated Files
+# ========================================
+.DS_Store
+Thumbs.db
+desktop.ini
+
+# ========================================
+# Temp files
+# ========================================
+git_dryrun.txt
+
+# ========================================
+# Logs
+# ========================================
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
