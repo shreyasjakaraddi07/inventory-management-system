@@ -20,7 +20,7 @@ export const completeOnboarding = async (req, res) => {
     tradeName,
     gstin,
     pan,
-    phone,
+    phone: rawPhone,
     email,
     address,
     city,
@@ -28,6 +28,7 @@ export const completeOnboarding = async (req, res) => {
     stateCode,
     pincode,
     logoUrl,
+    website,
     
     // Tax Settings
     defaultGstRate,
@@ -44,6 +45,8 @@ export const completeOnboarding = async (req, res) => {
     invoiceTerms
   } = req.body;
 
+  const phone = rawPhone ? String(rawPhone).replace(/\D/g, '') : '';
+
   let connection;
 
   try {
@@ -58,7 +61,7 @@ export const completeOnboarding = async (req, res) => {
     if (!phone || phone.length !== 10) {
       return res.status(400).json({
         success: false,
-        message: 'Valid phone number is required'
+        message: 'Valid 10-digit phone number is required'
       });
     }
 
@@ -67,7 +70,7 @@ export const completeOnboarding = async (req, res) => {
       // Clean and uppercase the GSTIN
       const cleanGstin = gstin.trim().toUpperCase();
       
-      const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+      const gstinRegex = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[0-9A-Z]{1}[0-9A-Z]{1}$/;
       if (!gstinRegex.test(cleanGstin)) {
         return res.status(400).json({
           success: false,
@@ -101,9 +104,9 @@ export const completeOnboarding = async (req, res) => {
 
     // Check if business already exists for this user PER USER
     const existingBusiness = await connection.execute(
-      `SELECT * FROM businesses WHERE user_id = :userId`,
+      `SELECT * FROM businesses WHERE owner_id = :userId`,
       { userId },
-      { outFormat: oracledb.OBJECT }
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
     let businessId;
@@ -149,7 +152,7 @@ export const completeOnboarding = async (req, res) => {
     } else {
       // Create new business PER USER
       const newBusiness = await connection.execute(
-        `INSERT INTO businesses (user_id, name) 
+        `INSERT INTO businesses (owner_id, name) 
          VALUES (:userId, :businessName) 
          RETURNING id INTO :businessId`,
         {
@@ -159,7 +162,10 @@ export const completeOnboarding = async (req, res) => {
         }
       );
 
-      businessId = newBusiness.outBinds.businessId;
+      // In node-oracledb, RETURNING INTO BIND_OUT returns an array of values
+      businessId = Array.isArray(newBusiness.outBinds.businessId)
+        ? newBusiness.outBinds.businessId[0]
+        : newBusiness.outBinds.businessId;
 
       // Insert business profile
       await connection.execute(
@@ -279,6 +285,57 @@ export const completeOnboarding = async (req, res) => {
         invoiceTerms: invoiceTerms || 'Goods once sold cannot be returned.'
       }
     );
+
+    // 4. Update or insert into the generic 'settings' table so that it displays on the Business Profile/Settings page
+    const genericSettings = {
+      // business group
+      'business_businessName': businessName,
+      'business_tradeName': tradeName || '',
+      'business_gstin': gstin || '',
+      'business_pan': pan || '',
+      'business_phone': phone,
+      'business_email': email || '',
+      'business_address': address || '',
+      'business_city': city || '',
+      'business_state': state || '',
+      'business_pincode': pincode || '',
+      'business_website': website || '',
+      'business_logo': logoUrl || '',
+      
+      // tax group
+      'tax_defaultGSTRate': defaultGstRate || 18,
+      'tax_enableIGST': enableIgst !== undefined ? enableIgst : true,
+      'tax_enableRoundOff': enableRoundOff !== undefined ? enableRoundOff : true,
+      'tax_filingFrequency': filingFrequency || 'monthly',
+
+      // invoice group
+      'invoice_invoicePrefix': invoicePrefix || 'INV-',
+      'invoice_purchasePrefix': purchasePrefix || 'PUR-',
+      'invoice_startingNumber': startingNumber || 1,
+      'invoice_showHSN': showHsn !== undefined ? showHsn : true,
+      'invoice_showGSTBreakup': showGstBreakup !== undefined ? showGstBreakup : true,
+      'invoice_invoiceTerms': invoiceTerms || 'Goods once sold cannot be returned.'
+    };
+
+    for (const [k, val] of Object.entries(genericSettings)) {
+      const valStr = typeof val === 'object' ? JSON.stringify(val) : String(val);
+      const grp = k.split('_')[0];
+
+      // Try to update first PER USER
+      const updateResult = await connection.execute(
+        `UPDATE settings SET setting_value = :val, updated_at = SYSDATE WHERE setting_key = :k AND user_id = :userId`,
+        { k, val: valStr, userId }
+      );
+
+      // If no rows updated, insert new PER USER
+      if (updateResult.rowsAffected === 0) {
+        await connection.execute(
+          `INSERT INTO settings (setting_key, setting_value, setting_group, updated_at, user_id) 
+           VALUES (:k, :val, :grp, SYSDATE, :userId)`,
+          { k, val: valStr, grp, userId }
+        );
+      }
+    }
 
     // Commit the transaction
     await connection.commit();

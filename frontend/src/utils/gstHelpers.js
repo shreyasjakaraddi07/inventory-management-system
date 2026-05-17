@@ -322,7 +322,8 @@ export const applyAmountRange = (value, range) => {
 export const buildValidationIssues = ({ salesRows = [], hsnRows = [], businessGSTIN = '' }) => {
   const missingGSTINRows = salesRows.filter((row) => row.INVOICE_TYPE === 'B2B' && !row.CUSTOMER_GSTIN);
   const invalidGSTINRows = salesRows.filter((row) => row.CUSTOMER_GSTIN && !validateGSTIN(row.CUSTOMER_GSTIN));
-  const missingHSNRows = salesRows.filter((row) => !row.HSN_CODE);
+  // Note: salesRows is invoice-level, so HSN_CODE is not present here. We should not flag missing HSN on invoice-level rows unless we fetch item-level details.
+  const missingHSNRows = [];
   const invalidGSTRateRows = salesRows.filter((row) => row.GST_RATE !== undefined && row.GST_RATE !== null && !VALID_GST_RATES.includes(parseFloat(row.GST_RATE)));
   const missingBusinessGSTIN = businessGSTIN ? !validateGSTIN(businessGSTIN) : true;
   const missingHSNSummaryCodes = hsnRows.filter((row) => !row.hsnCode);

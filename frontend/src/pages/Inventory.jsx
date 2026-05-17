@@ -97,15 +97,27 @@ const Inventory = () => {
   const handleSave = async (e) => {
     e.preventDefault();
     try {
+      // Map frontend camelCase fields to backend snake_case fields
+      const payload = {
+        product_name: currentProduct.product_name,
+        hsn_code: currentProduct.hsnCode || currentProduct.hsn_code || '',
+        purchase_price: parseFloat(currentProduct.costPrice) || 0,
+        sale_price: parseFloat(currentProduct.sellingPrice) || 0,
+        gst_rate: parseFloat(currentProduct.gstRate) || 18,
+        supplier_id: currentProduct.supplier_id || null,
+      };
       if (isEditing) {
-        await axios.put(`${API}/products/${currentProduct.product_id}`, currentProduct, getConfig());
+        await axios.put(`${API}/products/${currentProduct.product_id}`, payload, getConfig());
       } else {
-        await axios.post(`${API}/products`, currentProduct, getConfig());
+        await axios.post(`${API}/products`, {
+          ...payload,
+          quantity: parseInt(currentProduct.quantity) || 0,
+        }, getConfig());
       }
       setShowModal(false);
       fetchProducts();
     } catch (error) {
-      alert(error.response?.data?.message || 'Error saving product');
+      alert(error.response?.data?.message || error.response?.data?.error || 'Error saving product');
     }
   };
 

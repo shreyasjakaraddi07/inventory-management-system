@@ -479,7 +479,6 @@ const Purchase = () => {
                     <label className="block text-xs font-bold text-gray-500 dark:text-gray-400 uppercase mb-2">Supplier Name *</label>
                     <Autocomplete
                       searchEndpoint={`${API}/suppliers`}
-                      createEndpoint={`${API}/suppliers`}
                       placeholder="Search for a supplier or type to create..."
                       value={supplierName}
                       onChange={(val) => setSupplierName(val)}
@@ -592,7 +591,6 @@ const Purchase = () => {
                             <td className="py-2 px-2 relative min-w-[250px]">
                               <Autocomplete
                                 searchEndpoint={`${API}/products`}
-                                createEndpoint={`${API}/products`}
                                 placeholder="Product name..."
                                 value={item.product_name}
                                 inputClassName="!py-1.5 !rounded-lg text-sm !bg-gray-50 dark:!bg-gray-900/50 border-gray-200 dark:border-gray-700 !text-gray-900 dark:!text-white"

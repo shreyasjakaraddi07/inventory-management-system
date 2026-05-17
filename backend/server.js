@@ -535,7 +535,7 @@ app.post('/api/products', async (req, res) => {
        RETURNING product_id INTO :out_id`,
       {
         name: product_name.trim(),
-        hsn: hsn_code ? hsn_code.trim() : null,
+        hsn: hsn_code ? String(hsn_code).trim() : null,
         supplier_id: supplier_id ? parseInt(supplier_id) : null,
         purchase_price: purchase_price != null ? parseFloat(purchase_price) : 0,
         sale_price: sale_price != null ? parseFloat(sale_price) : (purchase_price != null ? parseFloat(purchase_price) * 1.2 : 0),
@@ -569,7 +569,14 @@ app.put('/api/products/:productId', async (req, res) => {
   let connection;
   try {
     const { productId } = req.params;
-    const { product_name, hsn_code, purchase_price, sale_price, gst_rate, supplier_id } = req.body;
+    // Accept both snake_case and camelCase field names
+    const body = req.body;
+    const product_name  = body.product_name  || body.productName;
+    const hsn_code      = body.hsn_code      || body.hsnCode      || null;
+    const purchase_price = body.purchase_price != null ? body.purchase_price : (body.costPrice != null ? body.costPrice : 0);
+    const sale_price    = body.sale_price    != null ? body.sale_price    : (body.sellingPrice != null ? body.sellingPrice : 0);
+    const gst_rate      = body.gst_rate      != null ? body.gst_rate      : (body.gstRate != null ? body.gstRate : 18);
+    const supplier_id   = body.supplier_id   || body.supplierId   || null;
     const userId = req.user.id;
     connection = await getConnection();
     
@@ -605,7 +612,7 @@ app.put('/api/products/:productId', async (req, res) => {
       {
         id: parseInt(productId),
         name: product_name.trim(),
-        hsn: hsn_code ? hsn_code.trim() : null,
+        hsn: hsn_code ? String(hsn_code).trim() : null,
         purchase_price: parseFloat(purchase_price),
         sale_price: parseFloat(sale_price),
         gst_rate: parseFloat(gst_rate),
@@ -889,9 +896,21 @@ app.post('/api/purchases', async (req, res) => {
     connection = await getConnection();
     const userId = req.user.id;
 
-    // 1. Resolve Supplier (atomicly) PER USER
+    // 0. Check for duplicate invoice number for this user
+    const dupInvoice = await connection.execute(
+      `SELECT purchase_id FROM purchases WHERE UPPER(invoice_number) = UPPER(:inv) AND user_id = :userId`,
+      { inv: invoice_number.trim(), userId },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    if (dupInvoice.rows && dupInvoice.rows.length > 0) {
+      await connection.close();
+      return res.status(409).json({ error: `Invoice number '${invoice_number}' already exists. Please use a unique invoice number.` });
+    }
+
+    // 1. Resolve Supplier PER USER
     let finalSupplierId = supplier_id;
     if (!finalSupplierId) {
+      // First try to find by name
       const existingSup = await connection.execute(
         `SELECT supplier_id FROM suppliers WHERE UPPER(supplier_name) = UPPER(:name) AND user_id = :userId`,
         { name: supplierName.trim(), userId },
@@ -900,22 +919,70 @@ app.post('/api/purchases', async (req, res) => {
       if (existingSup.rows && existingSup.rows.length > 0) {
         finalSupplierId = existingSup.rows[0].SUPPLIER_ID;
       } else {
-        const sResult = await connection.execute(
-          `INSERT INTO suppliers (supplier_name, gst_number, phone_number, email_id, is_active, created_at, user_id) 
-           VALUES (:name, :gst, :phone, :email, 1, SYSDATE, :userId) 
-           RETURNING supplier_id INTO :out_id`,
-          {
-            name: supplierName.trim(),
-            gst: supplierGST || null,
-            phone: supplierPhone || null,
-            email: supplierEmail || null,
-            userId,
-            out_id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
+        // If GSTIN is provided, check if another supplier already owns it
+        if (supplierGST) {
+          const gstOwner = await connection.execute(
+            `SELECT supplier_id FROM suppliers WHERE gst_number = :gst AND user_id = :userId`,
+            { gst: supplierGST.trim(), userId },
+            { outFormat: oracledb.OUT_FORMAT_OBJECT }
+          );
+          if (gstOwner.rows && gstOwner.rows.length > 0) {
+            // Reuse the supplier that already has this GSTIN
+            finalSupplierId = gstOwner.rows[0].SUPPLIER_ID;
+            console.log(`♻️ Reusing supplier with GSTIN ${supplierGST}: ID ${finalSupplierId}`);
           }
-        );
-        console.log(`✅ Auto-created new supplier: ${supplierName.trim()}`);
-        finalSupplierId = sResult.outBinds.out_id[0];
+        }
+
+        if (!finalSupplierId) {
+          const sResult = await connection.execute(
+            `INSERT INTO suppliers (supplier_name, gst_number, phone_number, email_id, is_active, created_at, user_id) 
+             VALUES (:name, :gst, :phone, :email, 1, SYSDATE, :userId) 
+             RETURNING supplier_id INTO :out_id`,
+            {
+              name: supplierName.trim(),
+              gst: supplierGST || null,
+              phone: supplierPhone || null,
+              email: supplierEmail || null,
+              userId,
+              out_id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
+            }
+          );
+          console.log(`✅ Auto-created new supplier: ${supplierName.trim()}`);
+          finalSupplierId = sResult.outBinds.out_id[0];
+        }
       }
+    }
+
+    // Update existing supplier's contact info if provided — but only update GSTIN
+    // if it isn't already taken by a different supplier
+    if (finalSupplierId && (supplierGST || supplierPhone || supplierEmail)) {
+      let safeGST = supplierGST || null;
+      if (safeGST) {
+        const gstConflict = await connection.execute(
+          `SELECT supplier_id FROM suppliers 
+           WHERE gst_number = :gst AND user_id = :userId AND supplier_id != :sid`,
+          { gst: safeGST, userId, sid: finalSupplierId },
+          { outFormat: oracledb.OUT_FORMAT_OBJECT }
+        );
+        if (gstConflict.rows && gstConflict.rows.length > 0) {
+          console.warn(`⚠️ GSTIN ${safeGST} belongs to another supplier — skipping GSTIN update`);
+          safeGST = null; // Skip updating GSTIN to avoid ORA-00001
+        }
+      }
+      await connection.execute(
+        `UPDATE suppliers 
+         SET gst_number   = CASE WHEN :gst IS NOT NULL AND :gst != '' THEN :gst ELSE gst_number END, 
+             phone_number = CASE WHEN :phone IS NOT NULL AND :phone != '' THEN :phone ELSE phone_number END, 
+             email_id     = CASE WHEN :email IS NOT NULL AND :email != '' THEN :email ELSE email_id END
+         WHERE supplier_id = :sid AND user_id = :userId`,
+        {
+          gst: safeGST,
+          phone: supplierPhone || null,
+          email: supplierEmail || null,
+          sid: finalSupplierId,
+          userId
+        }
+      );
     }
 
     // 1.5 Calculate totals for GST columns
@@ -988,22 +1055,40 @@ app.post('/api/purchases', async (req, res) => {
          if (existingProd.rows && existingProd.rows.length > 0) {
            productId = existingProd.rows[0].PRODUCT_ID;
          } else {
-           const pResult = await connection.execute(
-             `INSERT INTO products (product_name, hsn_code, supplier_id, purchase_price, sale_price, gst_rate, quantity, user_id) 
-              VALUES (:name, :hsn, :sid, :purchase_price, :sale_price, :gst, 0, :userId) 
-              RETURNING product_id INTO :out_id`,
-             {
-               name: item.product_name.trim(),
-               hsn: item.hsn_code || null,
-               sid: finalSupplierId,
-               purchase_price: parseFloat(item.unit_price) || 0,
-               sale_price: (parseFloat(item.unit_price) || 0) * 1.2, // Default 20% margin
-               gst: parseFloat(item.gst_rate) || 18,
-               userId,
-               out_id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
+           try {
+             const pResult = await connection.execute(
+               `INSERT INTO products (product_name, hsn_code, supplier_id, purchase_price, sale_price, gst_rate, quantity, user_id) 
+                VALUES (:name, :hsn, :sid, :purchase_price, :sale_price, :gst, 0, :userId) 
+                RETURNING product_id INTO :out_id`,
+               {
+                 name: item.product_name.trim(),
+                 hsn: item.hsn_code || null,
+                 sid: finalSupplierId,
+                 purchase_price: parseFloat(item.unit_price) || 0,
+                 sale_price: (parseFloat(item.unit_price) || 0) * 1.2,
+                 gst: parseFloat(item.gst_rate) || 18,
+                 userId,
+                 out_id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
+               }
+             );
+             productId = pResult.outBinds.out_id[0];
+           } catch (insertErr) {
+             // ORA-00001: duplicate — another request created it; fetch the existing one
+             if (insertErr.errorNum === 1) {
+               const retryProd = await connection.execute(
+                 `SELECT product_id FROM products WHERE UPPER(product_name) = UPPER(:name) AND is_active = 1 AND user_id = :userId`,
+                 { name: item.product_name.trim(), userId },
+                 { outFormat: oracledb.OUT_FORMAT_OBJECT }
+               );
+               if (retryProd.rows && retryProd.rows.length > 0) {
+                 productId = retryProd.rows[0].PRODUCT_ID;
+               } else {
+                 throw insertErr; // Give up — rethrow
+               }
+             } else {
+               throw insertErr;
              }
-           );
-           productId = pResult.outBinds.out_id[0];
+           }
          }
       }
 
@@ -1043,14 +1128,15 @@ app.post('/api/purchases', async (req, res) => {
         }
       );
 
-      // 4. Update Stock PER USER
+      // 4. Update Stock and HSN (if provided) PER USER
       await connection.execute(
         `UPDATE products SET 
            quantity = quantity + :qty, 
            purchase_price = :price,
+           hsn_code = CASE WHEN :hsn IS NOT NULL AND :hsn != '' THEN :hsn ELSE hsn_code END,
            updated_at = SYSDATE 
          WHERE product_id = :id AND user_id = :userId`,
-        { qty, price, id: productId, userId }
+        { qty, price, hsn: item.hsn_code || null, id: productId, userId }
       );
     }
 
@@ -1066,6 +1152,10 @@ app.post('/api/purchases', async (req, res) => {
       try { await connection.rollback(); } catch (e) { console.error('Rollback failed:', e); }
     }
     console.error('❌ Robust Purchase error:', error.message);
+    // ORA-00001: unique constraint violated — give a friendly message
+    if (error.errorNum === 1) {
+      return res.status(409).json({ error: 'Duplicate data detected: a record with this invoice number, supplier GSTIN, or product name already exists. Please check your entries.' });
+    }
     res.status(500).json({ error: error.message || 'Failed to create purchase' });
   } finally {
     if (connection) {
@@ -1151,7 +1241,7 @@ app.get('/api/purchases/:purchaseId', async (req, res) => {
     }
 
     const itemsResult = await connection.execute(
-      `SELECT pi.*, pro.product_name, pro.hsn_code
+      `SELECT pi.item_id, pi.product_id, pro.product_name, pro.hsn_code, pi.quantity, pi.unit_price, pi.taxable_amount, pi.cgst_amount, pi.sgst_amount, pi.igst_amount, pi.total_amount, pro.gst_rate
        FROM purchase_items pi
        JOIN products pro ON pi.product_id = pro.product_id AND pro.user_id = pi.user_id
        WHERE pi.purchase_id = :id AND pi.user_id = :userId`,
@@ -2757,7 +2847,7 @@ app.post('/api/settings/:group', async (req, res) => {
 
     // ✅ FIX: Backend GSTIN validation
     if (group === 'business' && settingsData.gstin) {
-      const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+      const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[0-9A-Z]{1}[0-9A-Z]{1}$/;
       if (!GSTIN_REGEX.test(settingsData.gstin.toUpperCase())) {
         return res.status(400).json({
           success: false,
@@ -2837,7 +2927,7 @@ app.put('/api/settings/:group', async (req, res) => {
 
     // ✅ FIX: Backend GSTIN validation
     if (group === 'business' && settingsData.gstin) {
-      const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}Z[0-9A-Z]{1}$/;
+      const GSTIN_REGEX = /^[0-9]{2}[A-Z]{5}[0-9]{4}[A-Z]{1}[1-9A-Z]{1}[0-9A-Z]{1}[0-9A-Z]{1}$/;
       if (!GSTIN_REGEX.test(settingsData.gstin.toUpperCase())) {
         return res.status(400).json({
           success: false,

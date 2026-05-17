@@ -375,13 +375,33 @@ const Export = () => {
                   <table className="min-w-full divide-y divide-gray-100 dark:divide-gray-700">
                     <thead className="bg-gray-50 dark:bg-gray-800">
                       <tr>
-                        {['Invoice #', 'Date', 'Type', 'Party / GSTIN', 'Taxable Value', 'CGST', 'SGST', 'IGST', 'Total', 'Status'].map(h => (
+                        {(activeTile === 'hsn' 
+                          ? ['HSN Code', 'Description', 'UQC', 'Total Qty', 'Total Value', 'Taxable Value', 'IGST', 'CGST', 'SGST']
+                          : ['Invoice #', 'Date', 'Type', 'Party / GSTIN', 'Taxable Value', 'CGST', 'SGST', 'IGST', 'Total', 'Status']
+                        ).map(h => (
                           <th key={h} className="px-4 py-3 text-left text-[11px] font-semibold text-gray-500 dark:text-gray-400 uppercase tracking-wider whitespace-nowrap">{h}</th>
                         ))}
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-gray-100 dark:divide-gray-700">
                       {rows.slice(0, 50).map((row, i) => {
+                        if (activeTile === 'hsn') {
+                          return (
+                            <motion.tr key={i} whileHover={{ backgroundColor: 'rgba(0,0,0,0.01)' }}
+                              className="hover:bg-gray-50 dark:hover:bg-gray-700/30 transition-colors">
+                              <td className="px-4 py-3 text-xs font-medium text-gray-900 dark:text-white whitespace-nowrap">{row.hsnCode || '—'}</td>
+                              <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{row.description || '—'}</td>
+                              <td className="px-4 py-3 text-xs text-gray-500 dark:text-gray-400 whitespace-nowrap">{row.uqc || 'NOS'}</td>
+                              <td className="px-4 py-3 text-xs text-right text-gray-600 dark:text-gray-300 font-mono">{row.totalQuantity || 0}</td>
+                              <td className="px-4 py-3 text-xs text-right text-gray-600 dark:text-gray-300 font-mono">{(row.totalValue !== null && row.totalValue !== undefined) ? fmt(row.totalValue) : '—'}</td>
+                              <td className="px-4 py-3 text-xs text-right text-gray-600 dark:text-gray-300 font-mono">{(row.taxableValue !== null && row.taxableValue !== undefined) ? fmt(row.taxableValue) : '—'}</td>
+                              <td className="px-4 py-3 text-xs text-right text-gray-600 dark:text-gray-300 font-mono">{(row.integratedTax !== null && row.integratedTax !== undefined) ? fmt(row.integratedTax) : '—'}</td>
+                              <td className="px-4 py-3 text-xs text-right text-gray-600 dark:text-gray-300 font-mono">{(row.centralTax !== null && row.centralTax !== undefined) ? fmt(row.centralTax) : '—'}</td>
+                              <td className="px-4 py-3 text-xs text-right text-gray-600 dark:text-gray-300 font-mono">{(row.stateUtTax !== null && row.stateUtTax !== undefined) ? fmt(row.stateUtTax) : '—'}</td>
+                            </motion.tr>
+                          );
+                        }
+
                         const invNum = row.INVOICE_NUMBER || row.invoice_number || row.noteNumber || '—';
                         const invDate = row.INVOICE_DATE || row.invoice_date || row.noteDate;
                         const invType = row.INVOICE_TYPE || row.invoice_type || row.noteType || '—';

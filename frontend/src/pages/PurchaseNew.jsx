@@ -129,6 +129,7 @@ const PurchaseNew = () => {
       if (product) {
         newItems[index].gst_rate = product.GST_RATE || 18;
         newItems[index].unit_price = product.PURCHASE_PRICE || 0;
+        newItems[index].hsn_code = product.HSN_CODE || '';
       }
     }
     
@@ -244,6 +245,7 @@ const PurchaseNew = () => {
         invoice_date: invoiceDate,
         items: items.map(item => ({
           product_id: parseInt(item.product_id),
+          hsn_code: item.hsn_code || '',
           quantity: parseFloat(item.quantity),
           unit_price: parseFloat(item.unit_price),
           gst_rate: parseFloat(item.gst_rate),
