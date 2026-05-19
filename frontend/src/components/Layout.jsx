@@ -7,7 +7,7 @@ import { LayoutDashboard, Package, LogOut, Sun, Moon, ShoppingCart, TrendingUp, 
 const Sidebar = () => {
   const location = useLocation();
   const isActive = (path) => location.pathname === path;
-  const { logout } = useContext(AuthContext);
+  const { logout, user } = useContext(AuthContext);
 
   const navLinks = [
     { to: '/', label: 'Dashboard', icon: LayoutDashboard },
@@ -20,6 +20,13 @@ const Sidebar = () => {
     { to: '/settings', label: 'Settings', icon: Settings },
   ];
 
+  const filteredLinks = navLinks.filter(({ to }) => {
+    if (user?.role === 'Staff') {
+      return to !== '/export' && to !== '/settings';
+    }
+    return true;
+  });
+
   return (
     <aside className="w-64 bg-white dark:bg-gray-800 border-r border-gray-200 dark:border-gray-700 flex flex-col hidden md:flex">
       <div className="h-16 flex items-center px-6 border-b border-gray-200 dark:border-gray-700">
@@ -27,7 +34,7 @@ const Sidebar = () => {
       </div>
       <nav className="flex-1 py-4">
         <ul className="space-y-1 px-3">
-          {navLinks.map(({ to, label, icon: Icon }) => (
+          {filteredLinks.map(({ to, label, icon: Icon }) => (
             <li key={to}>
               <Link to={to}
                 className={`flex items-center px-4 py-2.5 text-sm rounded-lg transition-colors font-medium ${
@@ -71,7 +78,9 @@ const Topbar = () => {
           </div>
           <div className="hidden sm:block">
             <p className="text-sm font-medium leading-none">{user?.name}</p>
-            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">{user?.role}</p>
+            <p className="text-xs text-gray-500 dark:text-gray-400 mt-1">
+              {user?.role === 'Admin' ? 'Owner of Business' : user?.role}
+            </p>
           </div>
         </div>
       </div>

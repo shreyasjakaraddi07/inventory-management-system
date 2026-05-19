@@ -51,19 +51,53 @@ const formatUserResponse = (row, token) => ({
   token
 });
 
-import { authenticateToken } from './middleware/auth.js';
+import { authenticateToken, isAdmin } from './middleware/auth.js';
 
 // ==================== AUTH API ====================
 
 app.post('/api/auth/register', async (req, res) => {
   let connection;
   try {
-    const { name, email, password, role } = req.body;
+    const { name, email, password, role, owner_email, owner_password } = req.body;
     if (!name || !email || !password) {
       return res.status(400).json({ message: 'Name, email and password are required' });
     }
 
     connection = await getConnection();
+
+    // If role is Staff, validate that the owner exists and password is correct
+    if (role === 'Staff') {
+      if (!owner_email) {
+        return res.status(400).json({ message: "Owner's email is required for staff registration." });
+      }
+      if (!owner_password) {
+        return res.status(400).json({ message: "Owner's password is required for staff registration." });
+      }
+
+      const ownerCheck = await connection.execute(
+        `SELECT ID, PASSWORD FROM users WHERE LOWER(EMAIL) = LOWER(:owner_email) AND LOWER(ROLE) = 'admin'`,
+        { owner_email },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+
+      if (!ownerCheck.rows || ownerCheck.rows.length === 0) {
+        return res.status(400).json({ message: "Business owner's Gmail not found. Please ensure they register first." });
+      }
+
+      const owner = ownerCheck.rows[0];
+      let isOwnerPasswordValid = false;
+      const storedOwnerPassword = owner.PASSWORD || '';
+
+      if (/^\$2[aby]\$/.test(storedOwnerPassword)) {
+        isOwnerPasswordValid = await bcrypt.compare(owner_password, storedOwnerPassword);
+      } else {
+        isOwnerPasswordValid = storedOwnerPassword === owner_password;
+      }
+
+      if (!isOwnerPasswordValid) {
+        return res.status(401).json({ message: "Invalid business owner password." });
+      }
+    }
 
     const existing = await connection.execute(
       `SELECT ID FROM users WHERE LOWER(EMAIL) = LOWER(:email)`,
@@ -78,26 +112,47 @@ app.post('/api/auth/register', async (req, res) => {
     const password_hash = await bcrypt.hash(password, 10);
 
     await connection.execute(
-      `INSERT INTO users (NAME, EMAIL, PASSWORD, ORGANIZATION, ROLE, CREATED_AT)
-       VALUES (:name, :email, :password_hash, NULL, :role, SYSDATE)`,
+      `INSERT INTO users (NAME, EMAIL, PASSWORD, ORGANIZATION, ROLE, CREATED_AT, OWNER_EMAIL)
+       VALUES (:name, :email, :password_hash, NULL, :role, SYSDATE, :owner_email)`,
       {
         name,
         email,
         password_hash,
-        role: role && (role.toLowerCase() === 'admin' || role.toLowerCase() === 'staff') ? role : 'Admin' // Default to Admin for new owners
+        role: role && (role.toLowerCase() === 'admin' || role.toLowerCase() === 'staff') ? role : 'Admin', // Default to Admin for new owners
+        owner_email: role === 'Staff' ? owner_email : null
       },
       { autoCommit: true }
     );
 
     const result = await connection.execute(
-      `SELECT ID, NAME, EMAIL, ROLE FROM users WHERE LOWER(EMAIL) = LOWER(:email)`,
+      `SELECT ID, NAME, EMAIL, ROLE, OWNER_EMAIL FROM users WHERE LOWER(EMAIL) = LOWER(:email)`,
       { email },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
 
     const user = result.rows[0];
-    const token = createToken(user);
-    res.status(201).json(formatUserResponse(user, token));
+
+    // Resolve owner's ID if role is Staff
+    let finalUserId = user.ID;
+    if (user.ROLE === 'Staff' && user.OWNER_EMAIL) {
+      const ownerResult = await connection.execute(
+        `SELECT ID FROM users WHERE LOWER(EMAIL) = LOWER(:owner_email)`,
+        { owner_email: user.OWNER_EMAIL },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (ownerResult.rows && ownerResult.rows.length > 0) {
+        finalUserId = ownerResult.rows[0].ID;
+      }
+    }
+
+    const token = createToken({
+      ...user,
+      ID: finalUserId
+    });
+    res.status(201).json(formatUserResponse({
+      ...user,
+      ID: finalUserId
+    }, token));
   } catch (error) {
     console.error('❌ Registration error:', error.message);
     res.status(500).json({ message: 'Registration failed', details: error.message });
@@ -119,7 +174,7 @@ app.post('/api/auth/login', async (req, res) => {
     connection = await getConnection();
 
     const result = await connection.execute(
-      `SELECT ID, NAME, EMAIL, PASSWORD, ROLE FROM users WHERE LOWER(EMAIL) = LOWER(:email)`,
+      `SELECT ID, NAME, EMAIL, PASSWORD, ROLE, OWNER_EMAIL, IS_ACTIVE FROM users WHERE LOWER(EMAIL) = LOWER(:email)`,
       { email },
       { outFormat: oracledb.OUT_FORMAT_OBJECT }
     );
@@ -127,6 +182,10 @@ app.post('/api/auth/login', async (req, res) => {
     const user = result.rows?.[0];
     if (!user) {
       return res.status(401).json({ message: 'Invalid email or password' });
+    }
+
+    if (user.IS_ACTIVE === 0) {
+      return res.status(403).json({ message: 'Your account has been deactivated. Please contact your business owner.' });
     }
 
     let isValid = false;
@@ -150,8 +209,27 @@ app.post('/api/auth/login', async (req, res) => {
       return res.status(401).json({ message: 'Invalid email or password' });
     }
 
-    const token = createToken(user);
-    res.status(200).json(formatUserResponse(user, token));
+    // Resolve owner's ID if role is Staff
+    let finalUserId = user.ID;
+    if (user.ROLE === 'Staff' && user.OWNER_EMAIL) {
+      const ownerResult = await connection.execute(
+        `SELECT ID FROM users WHERE LOWER(EMAIL) = LOWER(:owner_email)`,
+        { owner_email: user.OWNER_EMAIL },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (ownerResult.rows && ownerResult.rows.length > 0) {
+        finalUserId = ownerResult.rows[0].ID;
+      }
+    }
+
+    const token = createToken({
+      ...user,
+      ID: finalUserId
+    });
+    res.status(200).json(formatUserResponse({
+      ...user,
+      ID: finalUserId
+    }, token));
   } catch (error) {
     console.error('❌ Login error:', error.message);
     res.status(500).json({ message: 'Login failed', details: error.message });
@@ -172,10 +250,10 @@ app.use('/api/purchase-returns', authenticateToken);
 app.use('/api/sales', authenticateToken);
 app.use('/api/sales/return', authenticateToken);
 app.use('/api/stock-report', authenticateToken);
-app.use('/api/export', authenticateToken);
-app.use('/api/exports', authenticateToken);
+app.use('/api/export', authenticateToken, isAdmin);
+app.use('/api/exports', authenticateToken, isAdmin);
 app.use('/api/dashboard', authenticateToken);
-app.use('/api/settings', authenticateToken);  // ✅ FIX: Settings requires authentication
+app.use('/api/settings', authenticateToken, isAdmin);  // ✅ FIX: Settings requires authentication and admin privileges
 
 // Register GST Export routes
 app.use('/api/exports', gstExportRoutes);
@@ -504,7 +582,7 @@ app.get('/api/products', async (req, res) => {
 app.post('/api/products', async (req, res) => {
   let connection;
   try {
-    const { product_name, hsn_code, purchase_price, sale_price, gst_rate, supplier_id } = req.body;
+    const { product_name, hsn_code, purchase_price, sale_price, gst_rate, supplier_id, supplier_name, supplier } = req.body;
     if (!product_name) {
       return res.status(400).json({ error: 'Product name is required' });
     }
@@ -529,6 +607,33 @@ app.post('/api/products', async (req, res) => {
       });
     }
 
+    // Resolve supplier by name or ID
+    let finalSupplierId = supplier_id ? parseInt(supplier_id) : null;
+    const incomingSupplierName = supplier_name || supplier;
+    if (!finalSupplierId && incomingSupplierName && incomingSupplierName.trim()) {
+      const trimmedName = incomingSupplierName.trim();
+      const existingSup = await connection.execute(
+        `SELECT supplier_id FROM suppliers WHERE UPPER(supplier_name) = UPPER(:name) AND user_id = :userId`,
+        { name: trimmedName, userId },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (existingSup.rows && existingSup.rows.length > 0) {
+        finalSupplierId = existingSup.rows[0].SUPPLIER_ID;
+      } else {
+        const sResult = await connection.execute(
+          `INSERT INTO suppliers (supplier_name, is_active, created_at, user_id) 
+           VALUES (:name, 1, SYSDATE, :userId) 
+           RETURNING supplier_id INTO :out_id`,
+          {
+            name: trimmedName,
+            userId,
+            out_id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
+          }
+        );
+        finalSupplierId = sResult.outBinds.out_id[0];
+      }
+    }
+
     const result = await connection.execute(
       `INSERT INTO products (product_id, product_name, hsn_code, supplier_id, purchase_price, sale_price, gst_rate, quantity, is_active, created_at, updated_at, user_id)
        VALUES (product_seq.NEXTVAL, :name, :hsn, :supplier_id, :purchase_price, :sale_price, :gst_rate, 0, 1, SYSDATE, SYSDATE, :userId)
@@ -536,7 +641,7 @@ app.post('/api/products', async (req, res) => {
       {
         name: product_name.trim(),
         hsn: hsn_code ? String(hsn_code).trim() : null,
-        supplier_id: supplier_id ? parseInt(supplier_id) : null,
+        supplier_id: finalSupplierId,
         purchase_price: purchase_price != null ? parseFloat(purchase_price) : 0,
         sale_price: sale_price != null ? parseFloat(sale_price) : (purchase_price != null ? parseFloat(purchase_price) * 1.2 : 0),
         gst_rate: gst_rate != null ? parseFloat(gst_rate) : 18,
@@ -599,6 +704,33 @@ app.put('/api/products/:productId', async (req, res) => {
       });
     }
     
+    // Resolve supplier by name or ID
+    let finalSupplierId = supplier_id ? parseInt(supplier_id) : null;
+    const incomingSupplierName = body.supplier_name || body.supplier;
+    if (!finalSupplierId && incomingSupplierName && incomingSupplierName.trim()) {
+      const trimmedName = incomingSupplierName.trim();
+      const existingSup = await connection.execute(
+        `SELECT supplier_id FROM suppliers WHERE UPPER(supplier_name) = UPPER(:name) AND user_id = :userId`,
+        { name: trimmedName, userId },
+        { outFormat: oracledb.OUT_FORMAT_OBJECT }
+      );
+      if (existingSup.rows && existingSup.rows.length > 0) {
+        finalSupplierId = existingSup.rows[0].SUPPLIER_ID;
+      } else {
+        const sResult = await connection.execute(
+          `INSERT INTO suppliers (supplier_name, is_active, created_at, user_id) 
+           VALUES (:name, 1, SYSDATE, :userId) 
+           RETURNING supplier_id INTO :out_id`,
+          {
+            name: trimmedName,
+            userId,
+            out_id: { type: oracledb.NUMBER, dir: oracledb.BIND_OUT }
+          }
+        );
+        finalSupplierId = sResult.outBinds.out_id[0];
+      }
+    }
+    
     await connection.execute(
       `UPDATE products 
        SET product_name = :name, 
@@ -616,7 +748,7 @@ app.put('/api/products/:productId', async (req, res) => {
         purchase_price: parseFloat(purchase_price),
         sale_price: parseFloat(sale_price),
         gst_rate: parseFloat(gst_rate),
-        supplier_id: supplier_id ? parseInt(supplier_id) : null,
+        supplier_id: finalSupplierId,
         userId
       },
       { autoCommit: true }
@@ -1133,10 +1265,11 @@ app.post('/api/purchases', async (req, res) => {
         `UPDATE products SET 
            quantity = quantity + :qty, 
            purchase_price = :price,
+           supplier_id = :sid,
            hsn_code = CASE WHEN :hsn IS NOT NULL AND :hsn != '' THEN :hsn ELSE hsn_code END,
            updated_at = SYSDATE 
          WHERE product_id = :id AND user_id = :userId`,
-        { qty, price, hsn: item.hsn_code || null, id: productId, userId }
+        { qty, price, sid: finalSupplierId, hsn: item.hsn_code || null, id: productId, userId }
       );
     }
 
@@ -2704,6 +2837,87 @@ app.get('/api/dashboard/stats', authenticateToken, async (req, res) => {
   } catch (error) {
     console.error('❌ Dashboard stats error:', error.message);
     res.status(500).json({ error: 'Failed to fetch dashboard stats', details: error.message });
+  } finally {
+    if (connection) await connection.close();
+  }
+});
+
+// GET /api/settings/staff - Get all staff members for the owner
+app.get('/api/settings/staff', async (req, res) => {
+  let connection;
+  try {
+    connection = await getConnection();
+    const ownerEmail = req.user.email;
+    
+    const result = await connection.execute(
+      `SELECT ID, NAME, EMAIL, IS_ACTIVE FROM users WHERE LOWER(OWNER_EMAIL) = LOWER(:ownerEmail) AND ROLE = 'Staff' ORDER BY NAME`,
+      { ownerEmail },
+      { outFormat: oracledb.OUT_FORMAT_OBJECT }
+    );
+    
+    res.json({ success: true, data: result.rows || [] });
+  } catch (error) {
+    console.error('Error fetching staff list:', error);
+    res.status(500).json({ success: false, message: 'Failed to fetch staff list', details: error.message });
+  } finally {
+    if (connection) await connection.close();
+  }
+});
+
+// PUT /api/settings/staff/:id/toggle - Toggle active status of a staff member
+app.put('/api/settings/staff/:id/toggle', async (req, res) => {
+  let connection;
+  try {
+    const { id } = req.params;
+    const { is_active } = req.body;
+    const ownerEmail = req.user.email;
+    
+    if (is_active !== 0 && is_active !== 1) {
+      return res.status(400).json({ success: false, message: 'is_active must be 0 or 1' });
+    }
+    
+    connection = await getConnection();
+    const result = await connection.execute(
+      `UPDATE users SET IS_ACTIVE = :is_active WHERE ID = :id AND LOWER(OWNER_EMAIL) = LOWER(:ownerEmail) AND ROLE = 'Staff'`,
+      { is_active, id, ownerEmail },
+      { autoCommit: true }
+    );
+    
+    if (result.rowsAffected === 0) {
+      return res.status(404).json({ success: false, message: 'Staff member not found or unauthorized' });
+    }
+    
+    res.json({ success: true, message: 'Staff access updated successfully' });
+  } catch (error) {
+    console.error('Error toggling staff access:', error);
+    res.status(500).json({ success: false, message: 'Failed to toggle staff access', details: error.message });
+  } finally {
+    if (connection) await connection.close();
+  }
+});
+
+// DELETE /api/settings/staff/:id - Remove a staff member
+app.delete('/api/settings/staff/:id', async (req, res) => {
+  let connection;
+  try {
+    const { id } = req.params;
+    const ownerEmail = req.user.email;
+    
+    connection = await getConnection();
+    const result = await connection.execute(
+      `DELETE FROM users WHERE ID = :id AND LOWER(OWNER_EMAIL) = LOWER(:ownerEmail) AND ROLE = 'Staff'`,
+      { id, ownerEmail },
+      { autoCommit: true }
+    );
+    
+    if (result.rowsAffected === 0) {
+      return res.status(404).json({ success: false, message: 'Staff member not found or unauthorized' });
+    }
+    
+    res.json({ success: true, message: 'Staff member removed successfully' });
+  } catch (error) {
+    console.error('Error deleting staff member:', error);
+    res.status(500).json({ success: false, message: 'Failed to remove staff member', details: error.message });
   } finally {
     if (connection) await connection.close();
   }

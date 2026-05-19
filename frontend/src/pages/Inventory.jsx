@@ -3,11 +3,12 @@ import { AuthContext } from '../context/AuthContext';
 import axios from 'axios';
 import { Search, Plus, Download, Edit, Trash2, Package, AlertTriangle, CheckCircle } from 'lucide-react';
 import * as XLSX from 'xlsx';
+import Autocomplete from '../components/Autocomplete';
 
 const API = 'http://localhost:8080/api';
 
 const defaultProduct = {
-  product_name: '', sku: '', category: '', quantity: '', supplier: '',
+  product_name: '', sku: '', category: '', quantity: '', supplier: '', supplier_id: null,
   costPrice: '', sellingPrice: '', hsnCode: '', gstRate: 18, minStock: ''
 };
 
@@ -55,6 +56,7 @@ const Inventory = () => {
         category: p.CATEGORY || 'General', // Not in DB yet
         quantity: p.QUANTITY || 0,
         supplier: p.SUPPLIER_NAME || 'Unknown',
+        supplier_id: p.SUPPLIER_ID || null,
         costPrice: p.PURCHASE_PRICE || 0,
         sellingPrice: p.SALE_PRICE || 0,
         hsnCode: p.HSN_CODE || '',
@@ -332,8 +334,30 @@ const Inventory = () => {
                   </div>
                   <div>
                     <label className="block text-xs font-medium text-gray-500 dark:text-gray-400 mb-1">Supplier</label>
-                    <input value={currentProduct.supplier || ''} onChange={e => setCurrentProduct({ ...currentProduct, supplier: e.target.value })}
-                      className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg bg-white dark:bg-gray-700 text-sm focus:ring-2 focus:ring-indigo-500 focus:outline-none" />
+                    <Autocomplete
+                      searchEndpoint={`${API}/suppliers`}
+                      placeholder="Search or type new supplier..."
+                      value={currentProduct.supplier || ''}
+                      onChange={(val) => setCurrentProduct({ ...currentProduct, supplier: val, supplier_id: null })}
+                      onSelect={(s) => {
+                        if (s.isNew) {
+                          setCurrentProduct({
+                            ...currentProduct,
+                            supplier: s.supplier_name || '',
+                            supplier_id: null
+                          });
+                        } else {
+                          setCurrentProduct({
+                            ...currentProduct,
+                            supplier: s.SUPPLIER_NAME || s.supplier_name || '',
+                            supplier_id: s.SUPPLIER_ID || s.supplier_id || null
+                          });
+                        }
+                      }}
+                      labelKey="supplier_name"
+                      valueKey="supplier_id"
+                      inputClassName="w-full !px-3 !py-2 !border border-gray-300 dark:!border-gray-600 !rounded-lg !bg-white dark:!bg-gray-700 !text-sm focus:!ring-2 focus:!ring-indigo-500 focus:!outline-none"
+                    />
                   </div>
                 </div>
 

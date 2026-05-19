@@ -9,13 +9,15 @@ import {
   Search,
   CheckCircle2,
   AlertCircle,
-  X
+  X,
+  Users
 } from 'lucide-react';
 import axios from 'axios';
 import BusinessProfile from '../components/settings/BusinessProfile';
 import TaxSettings from '../components/settings/TaxSettings';
 import InvoiceSettings from '../components/settings/InvoiceSettings';
 import NotificationSettings from '../components/settings/NotificationSettings';
+import StaffManagement from '../components/settings/StaffManagement';
 
 const API = 'http://localhost:8080/api';
 
@@ -356,7 +358,8 @@ const Settings = () => {
     { id: 'business', label: 'Business Profile', icon: Building2 },
     { id: 'tax', label: 'Tax & GST', icon: Percent },
     { id: 'invoice', label: 'Invoice Settings', icon: FileText },
-    { id: 'notifications', label: 'Notifications', icon: Bell }
+    { id: 'notifications', label: 'Notifications', icon: Bell },
+    { id: 'staff', label: 'Staff Management', icon: Users }
   ];
 
   const renderContent = () => {
@@ -395,6 +398,12 @@ const Settings = () => {
             onChange={handleSettingChange}
             onSave={handleSaveNotifications}
             loading={saving}
+          />
+        );
+      case 'staff':
+        return (
+          <StaffManagement
+            user={user}
           />
         );
       default:

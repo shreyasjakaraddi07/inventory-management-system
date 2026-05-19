@@ -34,8 +34,12 @@ function App() {
             <Route path="sales" element={<Sales />} />
             <Route path="customers" element={<Customers />} />
             <Route path="suppliers" element={<Suppliers />} />
-            <Route path="export" element={<Export />} />
-            <Route path="settings" element={<Settings />} />
+            
+            {/* Admin only routes */}
+            <Route element={<ProtectedRoute adminOnly={true} />}>
+              <Route path="export" element={<Export />} />
+              <Route path="settings" element={<Settings />} />
+            </Route>
           </Route>
         </Route>
       </Routes>

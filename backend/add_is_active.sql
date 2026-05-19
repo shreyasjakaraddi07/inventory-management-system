@@ -1,0 +1,2 @@
+ALTER TABLE users ADD is_active NUMBER(1) DEFAULT 1 NOT NULL;
+EXIT;

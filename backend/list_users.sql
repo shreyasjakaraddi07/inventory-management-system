@@ -1,0 +1,2 @@
+SELECT ID, EMAIL, ROLE FROM users;
+EXIT;

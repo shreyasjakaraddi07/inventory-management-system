@@ -1,0 +1,2 @@
+DESCRIBE users;
+EXIT;

@@ -134,7 +134,7 @@ const Onboarding = () => {
             </div>
             <span className="text-white font-bold text-xl tracking-tight">InventoryGST</span>
           </div>
-          <h1 className="text-3xl font-bold text-white tracking-tight">Set up your IT Business</h1>
+          <h1 className="text-3xl font-bold text-white tracking-tight">Set up your Business</h1>
           <p className="text-slate-400 mt-2 text-sm">Complete your profile to unlock your smart inventory dashboard</p>
         </div>
 
@@ -155,8 +155,8 @@ const Onboarding = () => {
                   <div key={s.id} className="flex items-center flex-1">
                     <div className={`flex items-center gap-2 ${idx < STEPS.length - 1 ? 'flex-1' : ''}`}>
                       <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-bold transition-all duration-300 ${isDone ? 'bg-gradient-to-br from-blue-500 to-violet-600 text-white shadow-lg shadow-blue-500/30'
-                          : isActive ? 'bg-gradient-to-br from-blue-500/20 to-violet-500/20 border border-blue-400/50 text-blue-300'
-                            : 'bg-white/5 border border-white/10 text-slate-500'
+                        : isActive ? 'bg-gradient-to-br from-blue-500/20 to-violet-500/20 border border-blue-400/50 text-blue-300'
+                          : 'bg-white/5 border border-white/10 text-slate-500'
                         }`}>
                         {isDone ? <CheckCircle2 size={16} /> : <Icon size={14} />}
                       </div>

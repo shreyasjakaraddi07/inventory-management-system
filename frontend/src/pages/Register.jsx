@@ -8,6 +8,8 @@ const Register = () => {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [role, setRole] = useState('Staff');
+  const [ownerEmail, setOwnerEmail] = useState('');
+  const [ownerPassword, setOwnerPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { register } = useContext(AuthContext);
@@ -17,9 +19,27 @@ const Register = () => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+
+    if (role === 'Staff') {
+      if (!ownerEmail) {
+        setError("Owner's email is required for staff accounts.");
+        setIsLoading(false);
+        return;
+      }
+      if (!ownerPassword) {
+        setError("Owner's password is required for staff accounts.");
+        setIsLoading(false);
+        return;
+      }
+    }
     
     try {
-      const res = await register({ name, email, password, role });
+      const payload = { name, email, password, role };
+      if (role === 'Staff') {
+        payload.owner_email = ownerEmail;
+        payload.owner_password = ownerPassword;
+      }
+      const res = await register(payload);
       if (res.success) {
         navigate('/onboarding');
       } else {
@@ -123,7 +143,7 @@ const Register = () => {
                   className="block w-full pl-11 pr-10 py-3.5 bg-slate-800/50 border border-slate-700 text-white rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all duration-200 appearance-none"
                 >
                   <option value="Staff">Staff</option>
-                  <option value="Admin">Admin</option>
+                  <option value="Admin">Owner of Business</option>
                 </select>
                 <div className="absolute inset-y-0 right-0 pr-4 flex items-center pointer-events-none text-slate-400">
                   <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -132,6 +152,44 @@ const Register = () => {
                 </div>
               </div>
             </div>
+
+            {role === 'Staff' && (
+              <>
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-300 ml-1">Business Owner's Gmail</label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-blue-500 transition-colors">
+                      <Mail size={18} />
+                    </div>
+                    <input
+                      type="email"
+                      required
+                      value={ownerEmail}
+                      onChange={(e) => setOwnerEmail(e.target.value)}
+                      placeholder="owner@gmail.com"
+                      className="block w-full pl-11 pr-4 py-3.5 bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all duration-200"
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-sm font-semibold text-slate-300 ml-1">Business Owner's Password</label>
+                  <div className="relative group">
+                    <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-slate-500 group-focus-within:text-blue-500 transition-colors">
+                      <Lock size={18} />
+                    </div>
+                    <input
+                      type="password"
+                      required
+                      value={ownerPassword}
+                      onChange={(e) => setOwnerPassword(e.target.value)}
+                      placeholder="••••••••"
+                      className="block w-full pl-11 pr-4 py-3.5 bg-slate-800/50 border border-slate-700 text-white placeholder-slate-500 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500/40 focus:border-blue-500 transition-all duration-200"
+                    />
+                  </div>
+                </div>
+              </>
+            )}
           </div>
 
           <div>

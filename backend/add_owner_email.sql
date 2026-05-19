@@ -1,0 +1,2 @@
+ALTER TABLE users ADD owner_email VARCHAR2(100);
+EXIT;
